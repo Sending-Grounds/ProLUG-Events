@@ -11,7 +11,7 @@ import (
 func main() {
 	/* 
      Evaluate the .env file if one is located in the current directory for the module
-     You also have the option of adding any environment variables to path 
+     You also have the option of adding any environment variables to the shell environment 
   */
 	godotenv.Load()
 
