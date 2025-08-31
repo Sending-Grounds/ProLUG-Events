@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ProLUG Coding Contest main stack resources (DDB, SSQ, etc...)
+
+Parameters:
+  TableName:
+    Type: String
+    Default: prolug-coding-contest
+    Description:  Single-table design (participants, snapshots, leaderboards), for ProLUG Coding Contest
+
+Resources:
+  ProlugCodingContestTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref TableName
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      AttributeDefinitions:
+        # For Primary index
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        # GSI1- So we can lookup by Codewars username
+        - AttributeName: CodeWarsUsername
+          AttributeType: S
+        - AttributeName: ContestId
+          AttributeType: S
+        # GSI2 (optional): list by Clan. Not sold on this since seems like Clan is beng nerfed
+        - AttributeName: Clan
+          AttributeType: S
+        - AttributeName: DiscordUserId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        # GSI1: ByCodeWarsUsername (sparse index on PROFILE items)
+        - IndexName: GSI1-ByCodeWarsUsername
+          KeySchema:
+            - AttributeName: CodeWarsUsername
+              KeyType: HASH
+            - AttributeName: ContestId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - PK
+              - SK
+              - DiscordUserId
+              - DisplayName
+          # PAY_PER_REQUEST inherits; no throughput needed
+        # GSI2: ByClan (sparse index on PROFILE items)
+        - IndexName: GSI2-ByClan
+          KeySchema:
+            - AttributeName: Clan
+              KeyType: HASH
+            - AttributeName: DiscordUserId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - PK
+              - SK
+              - CodewarsUsername
+              - DisplayName
+      Tags:
+        - Key: Project
+          Value: ProLUG
+        - Key: Stack
+          Value: contest
+
+Outputs:
+  TableName:
+    Value: !Ref ProlugCodingContestTable
+    Export:
+      Name: !Sub '${AWS::StackName}:TableName'
+  TableArn:
+    Value: !GetAtt ProlugCodingContestTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}:TableArn'
+  StreamArn:
+    Value: !GetAtt ProlugCodingContestTable.StreamArn
+    Export:
+      Name: !Sub '${AWS::StackName}:StreamArn'
+  GSI1Name:
+    Value: GSI1-ByCodewarsUsername
+  GSI2Name:
+    Value: GSI2-ByClan
